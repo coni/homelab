@@ -70,6 +70,56 @@ resource "vault_kv_secret_v2" "authentik_config" {
   })
 }
 
+############################  --PTERODACTYL--  ############################
+
+# ----------------  APPROLE / TOKEN
+resource "vault_approle_auth_backend_role" "pterodactyl" {
+  backend        = vault_auth_backend.approle.path
+  role_name      = "pterodactyl-server"
+  token_policies = [vault_policy.pterodactyl_policy.name]
+
+  token_ttl      = 3600  # Token lives for 1 hour
+  token_max_ttl  = 14400 # Max 4 hours
+  secret_id_ttl  = 600   # The "login password" (SecretID) is valid for 10 mins
+}
+
+resource "vault_approle_auth_backend_role_secret_id" "pterodactyl_id" {
+  backend   = vault_auth_backend.approle.path
+  role_name = vault_approle_auth_backend_role.pterodactyl.role_name
+  wrapping_ttl = "300s"
+}
+
+# ----------------  POLICY
+resource "vault_policy" "pterodactyl_policy" {
+  name = "pterodactyl-policy"
+  policy = <<EOT
+path "secret/data/pterodactyl/config" {
+  capabilities = ["read"]
+}
+EOT
+}
+
+# ----------------  SECRETS DEFINITION
+resource "random_password" "pterodactyl_sql_pass"     { length = 31 }
+resource "random_password" "pterodactyl_sql_root_pass" { length = 31 }
+
+
+# ----------------  PAYLOAD FOR VALUES TO PUT IN OPENBAO
+resource "vault_kv_secret_v2" "pterodactyl_config" {
+  mount               = vault_mount.kv.path
+  name                = "pterodactyl/config"
+  cas                 = 1
+  delete_all_versions = true
+
+  data_json = jsonencode({
+
+    DB_PASSORD          = random_password.pterodactyl_sql_pass.result
+    MYSQL_PASSWORD      = random_password.pterodactyl_sql_pass.result
+    MYSQL_ROOT_PASSWORD = random_password.pterodactyl_sql_root_pass.result
+    APP_URL             = "pterodactyl.local.ni-coni-coni.com"
+  })
+}
+
 ##############################   PUT GOLDEN TICKET TOKENS HERE FOR CLOUDINIT
 locals {
   all_secrets = {
@@ -78,6 +128,12 @@ locals {
       bao_wrapping_token = vault_approle_auth_backend_role_secret_id.authentik_id.wrapping_token
       bao_addr = var.bao_addr
       secret_path        = "secret/data/authentik/config"
+    },
+    pterodactyl = {
+      bao_role_id = vault_approle_auth_backend_role.pterodactyl.role_id
+      bao_wrapping_token = vault_approle_auth_backend_role_secret_id.pterodactyl_id.wrapping_token
+      bao_addr = var.bao_addr
+      secret_path        = "secret/data/pterodactyl/config"
     }
   }
 }
