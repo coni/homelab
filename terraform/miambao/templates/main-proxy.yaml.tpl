@@ -6,7 +6,11 @@ ssh_authorized_keys:
 ssh_pwauth: false
 
 users:
-  - default
+  - name: debian
+    sudo: []
+    groups: [users]
+    ssh_authorized_keys:
+      - ssh-rsa ${ssh-key}
 
 package_update: true
 package_upgrade: true

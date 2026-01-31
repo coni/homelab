@@ -4,12 +4,12 @@ snippets_datastore = "XXX"
 ssh-key            = "XXX"
 
 vms = {
-  "hihi" = {
+  "authentik" = {
     vm_id     = 500
     cores     = 2
     memory    = 4096
     disk_size = 10
-    host_path = "/bewitched-raidz2/server/hihi/"
+    host_path = "/bewitched-raidz2/server/authentik/"
     networks = [
       { bridge = "vmbr0" },
     ]
