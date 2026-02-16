@@ -28,12 +28,14 @@ vms = {
     networks = [
       { bridge = "vmbr0" },
       { bridge = "vmbr1" },
-      { bridge = "bao" }
+      { bridge = "bao" },
+      { bridge = "nextcloud" }
     ]
     ips = [
       { address = "192.168.1.198/24", gateway = "192.168.1.254" },
       { address = "10.0.0.5/24" },
-      { address = "10.0.1.2/24" }
+      { address = "10.0.1.2/24" },
+      { address = "10.0.2.2/24" }
     ]
   }
 }
