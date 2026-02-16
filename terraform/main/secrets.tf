@@ -70,6 +70,63 @@ resource "vault_kv_secret_v2" "authentik_config" {
   })
 }
 
+############################  --nextcloud--  ############################
+
+# ----------------  APPROLE / TOKEN
+resource "vault_approle_auth_backend_role" "nextcloud" {
+  backend        = vault_auth_backend.approle.path
+  role_name      = "nextcloud-server"
+  token_policies = [vault_policy.nextcloud_policy.name]
+
+  token_ttl      = 3600  # Token lives for 1 hour
+  token_max_ttl  = 14400 # Max 4 hours
+  secret_id_ttl  = 600   # The "login password" (SecretID) is valid for 10 mins
+}
+
+resource "vault_approle_auth_backend_role_secret_id" "nextcloud_id" {
+  backend   = vault_auth_backend.approle.path
+  role_name = vault_approle_auth_backend_role.nextcloud.role_name
+  wrapping_ttl = "300s"
+}
+
+# ----------------  POLICY
+resource "vault_policy" "nextcloud_policy" {
+  name = "nextcloud-policy"
+  policy = <<EOT
+path "secret/data/nextcloud/config" {
+  capabilities = ["read"]
+}
+EOT
+}
+
+# ----------------  SECRETS DEFINITION
+resource "random_password" "nextcloud_db_password" {
+  length           = 35
+  special          = false
+  #override_special = "_-"
+}
+
+resource "random_password" "nextcloud_root_password" {
+  length           = 35
+  special          = false
+  #override_special = "_-"
+}
+
+# ----------------  PAYLOAD FOR VALUES TO PUT IN OPENBAO
+resource "vault_kv_secret_v2" "nextcloud_config" {
+  mount               = vault_mount.kv.path
+  name                = "nextcloud/config"
+  cas                 = 1
+  delete_all_versions = true
+
+  data_json = jsonencode({
+    MYSQL_ROOT_PASSWORD        = random_password.nextcloud_root_password.result
+    MYSQL_PASSWORD             = random_password.nextcloud_db_password.result
+    MYSQL_DATABASE             = "nextcloud"
+    MYSQL_USER                 = "nextcloud"
+  })
+}
+
 ##############################   PUT GOLDEN TICKET TOKENS HERE FOR CLOUDINIT
 locals {
   all_secrets = {
@@ -78,6 +135,12 @@ locals {
       bao_wrapping_token = vault_approle_auth_backend_role_secret_id.authentik_id.wrapping_token
       bao_addr = var.bao_addr
       secret_path        = "secret/data/authentik/config"
+    },
+    nextcloud = {
+      bao_role_id = vault_approle_auth_backend_role.nextcloud.role_id
+      bao_wrapping_token = vault_approle_auth_backend_role_secret_id.nextcloud_id.wrapping_token
+      bao_addr = var.bao_addr
+      secret_path        = "secret/data/nextcloud/config"
     }
   }
 }
