@@ -19,16 +19,18 @@ vms = {
     services  = ["authentik"]
   },
   "nextcloud" = {
-    vm_id     = 500
+    vm_id     = 501
     cores     = 2
     memory    = 4096
     disk_size = 10
     host_path = "/bewitched-raidz2/server/nextcloud/"
     networks = [
       { bridge = "vmbr0" },
+      { bridge = "nextcloud" },
     ]
     ips = [
       { address = "192.168.1.196/24", gateway = "192.168.1.254" },
+      { address = "10.0.2.1/24" },
     ],
     services  = ["nextcloud"]
   }
