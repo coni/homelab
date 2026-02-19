@@ -5,12 +5,12 @@ ssh_authorized_keys:
   - ssh-rsa ${ssh-key}
 ssh_pwauth: false
 
-users:
-  - name: debian
-    sudo: []
-    groups: [users]
-    ssh_authorized_keys:
-      - ssh-rsa ${ssh-key}
+#users:
+#  - name: debian
+#    sudo: []
+#    groups: [users]
+#    ssh_authorized_keys:
+#      - ssh-rsa ${ssh-key}
 
 package_update: true
 package_upgrade: true
@@ -30,6 +30,9 @@ write_files:
     content: |
       10.0.1.1      miambao.local
       10.0.2.1      nextcloud.local
+      10.0.3.1      main.local
+      10.0.3.1      authentik.main.local
+      10.0.3.1      pterodactyl.main.local
     append: true
 
 mounts:

@@ -9,3 +9,9 @@ resource "proxmox_virtual_environment_network_linux_bridge" "nextcloud_network" 
   name      = "nextcloud"
   comment   = "Nextcloud Private Network"
 }
+
+resource "proxmox_virtual_environment_network_linux_bridge" "main_network" {
+  node_name = var.node_name
+  name      = "main"
+  comment   = "Main Private Network"
+}

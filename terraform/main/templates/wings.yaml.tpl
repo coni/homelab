@@ -4,17 +4,16 @@ ssh_authorized_keys:
   - ssh-rsa ${ssh-key}
 ssh_pwauth: false
 
-users:
-  - name: debian
-    sudo: []
-    groups: [users]
-    ssh_authorized_keys:
-      - ssh-rsa ${ssh-key}
+#users:
+#  - name: debian
+#    sudo: []
+#    groups: [users]
+#    ssh_authorized_keys:
+#      - ssh-rsa ${ssh-key}
 
 package_update: true
 package_upgrade: true
 packages:
-  - podman
   - systemd-container
   - uidmap 
   - dbus-user-session
@@ -26,7 +25,7 @@ packages:
 write_files:
   - path: /etc/sysctl.d/10-unprivileged-ports.conf
     content: |
-      net.ipv4.ip_unprivileged_port_start=9000
+      net.ipv4.ip_unprivileged_port_start=80
 
   # ============================================================================
   # DYNAMIC SECRET FETCHING LOOP
@@ -129,14 +128,12 @@ runcmd:
   %{ for service_name, config in secrets }
   - systemctl enable --now fetch-${service_name}-secrets.service
   %{ endfor }
+  - curl -fsSL get.docker.com | bash
+  - systemctl enable --now docker
 
-  - ufw default allow incoming
-  - ufw default allow outgoing
-  - ufw allow 9000/tcp
-  - ufw allow 9443/tcp
-  - ufw --force enable
-
+  - usermod -aG docker debian
   - chown -R debian:debian /home/debian/
   - loginctl enable-linger debian
-  - machinectl shell debian@.host /usr/bin/systemctl --user daemon-reload
-  - machinectl shell debian@.host /usr/bin/systemctl --user enable --now podman.socket
+  - machinectl shell debian@.host /usr/bin/docker compose -f /home/debian/.config/containers/docker/wings/compose.yaml --project-directory /home/debian/.config/containers/docker/wings/ up -d
+  #- machinectl shell debian@.host /usr/bin/systemctl --user daemon-reload
+  #- machinectl shell debian@.host /usr/bin/systemctl --user enable --now podman.socket

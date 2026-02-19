@@ -12,7 +12,7 @@ resource "vault_auth_backend" "approle" {
 ############################  --AUTHENTIK--  ############################
 
 # ----------------  APPROLE / TOKEN
-resource "vault_approle_auth_backend_role" "authentik" {
+data "vault_approle_auth_backend_role" "authentik" {
   backend        = vault_auth_backend.approle.path
   role_name      = "authentik-server"
   token_policies = [vault_policy.authentik_policy.name]
@@ -22,14 +22,14 @@ resource "vault_approle_auth_backend_role" "authentik" {
   secret_id_ttl  = 600   # The "login password" (SecretID) is valid for 10 mins
 }
 
-resource "vault_approle_auth_backend_role_secret_id" "authentik_id" {
+data "vault_approle_auth_backend_role_secret_id" "authentik_id" {
   backend   = vault_auth_backend.approle.path
   role_name = vault_approle_auth_backend_role.authentik.role_name
   wrapping_ttl = "300s"
 }
 
 # ----------------  POLICY
-resource "vault_policy" "authentik_policy" {
+data "vault_policy" "authentik_policy" {
   name = "authentik-policy"
   policy = <<EOT
 path "secret/data/authentik/config" {
@@ -39,18 +39,18 @@ EOT
 }
 
 # ----------------  SECRETS DEFINITION
-resource "random_id" "authentik_secret_key" {
+data "random_id" "authentik_secret_key" {
   byte_length = 59
 }
 
-resource "random_password" "authentik_db_password" {
+data "random_password" "authentik_db_password" {
   length           = 35
   special          = false
   #override_special = "_-"
 }
 
 # ----------------  PAYLOAD FOR VALUES TO PUT IN OPENBAO
-resource "vault_kv_secret_v2" "authentik_config" {
+data "vault_kv_secret_v2" "authentik_config" {
   mount               = vault_mount.kv.path
   name                = "authentik/config"
   cas                 = 1
@@ -73,7 +73,7 @@ resource "vault_kv_secret_v2" "authentik_config" {
 ############################  --nextcloud--  ############################
 
 # ----------------  APPROLE / TOKEN
-resource "vault_approle_auth_backend_role" "nextcloud" {
+data "vault_approle_auth_backend_role" "nextcloud" {
   backend        = vault_auth_backend.approle.path
   role_name      = "nextcloud-server"
   token_policies = [vault_policy.nextcloud_policy.name]
@@ -83,14 +83,14 @@ resource "vault_approle_auth_backend_role" "nextcloud" {
   secret_id_ttl  = 600   # The "login password" (SecretID) is valid for 10 mins
 }
 
-resource "vault_approle_auth_backend_role_secret_id" "nextcloud_id" {
+data "vault_approle_auth_backend_role_secret_id" "nextcloud_id" {
   backend   = vault_auth_backend.approle.path
   role_name = vault_approle_auth_backend_role.nextcloud.role_name
   wrapping_ttl = "300s"
 }
 
 # ----------------  POLICY
-resource "vault_policy" "nextcloud_policy" {
+data "vault_policy" "nextcloud_policy" {
   name = "nextcloud-policy"
   policy = <<EOT
 path "secret/data/nextcloud/config" {
@@ -100,20 +100,20 @@ EOT
 }
 
 # ----------------  SECRETS DEFINITION
-resource "random_password" "nextcloud_db_password" {
+data "random_password" "nextcloud_db_password" {
   length           = 35
   special          = false
   #override_special = "_-"
 }
 
-resource "random_password" "nextcloud_root_password" {
+data "random_password" "nextcloud_root_password" {
   length           = 35
   special          = false
   #override_special = "_-"
 }
 
 # ----------------  PAYLOAD FOR VALUES TO PUT IN OPENBAO
-resource "vault_kv_secret_v2" "nextcloud_config" {
+data "vault_kv_secret_v2" "nextcloud_config" {
   mount               = vault_mount.kv.path
   name                = "nextcloud/config"
   cas                 = 1
@@ -124,6 +124,62 @@ resource "vault_kv_secret_v2" "nextcloud_config" {
     MYSQL_PASSWORD             = random_password.nextcloud_db_password.result
     MYSQL_DATABASE             = "nextcloud"
     MYSQL_USER                 = "nextcloud"
+  })
+}
+
+###########################  --pterodactyl_panel--  ###########################
+
+## ----------------  APPROLE / TOKEN
+data "vault_approle_auth_backend_role" "pterodactyl_panel" {
+  backend        = vault_auth_backend.approle.path
+  role_name      = "pterodactyl_panel"
+  token_policies = [vault_policy.pterodactyl_panel_policy.name]
+
+  token_ttl      = 3600  # Token lives for 1 hour
+  token_max_ttl  = 14400 # Max 4 hours
+  secret_id_ttl  = 600   # The "login password" (SecretID) is valid for 10 mins
+}
+
+data "vault_approle_auth_backend_role_secret_id" "pterodactyl_panel_id" {
+  backend   = vault_auth_backend.approle.path
+  role_name = vault_approle_auth_backend_role.pterodactyl_panel.role_name
+  wrapping_ttl = "300s"
+}
+
+# ----------------  POLICY
+data "vault_policy" "pterodactyl_panel_policy" {
+  name = "pterodactyl_panel-policy"
+  policy = <<EOT
+path "secret/data/pterodactyl_panel/config" {
+  capabilities = ["read"]
+}
+EOT
+}
+
+# ----------------  SECRETS DEFINITION
+data "random_password" "pterodactyl_panel_db_password" {
+  length           = 35
+  special          = false
+  #override_special = "_-"
+}
+
+data "random_password" "pterodactyl_panel_root_password" {
+  length           = 35
+  special          = false
+  #override_special = "_-"
+}
+
+# ----------------  PAYLOAD FOR VALUES TO PUT IN OPENBAO
+data "vault_kv_secret_v2" "pterodactyl_panel_config" {
+  mount               = vault_mount.kv.path
+  name                = "pterodactyl_panel/config"
+  cas                 = 1
+  delete_all_versions = true
+
+  data_json = jsonencode({
+    MYSQL_ROOT_PASSWORD = random_password.pterodactyl_panel_root_password.result
+    MYSQL_PASSWORD      = random_password.pterodactyl_panel_db_password.result
+    DB_PASSWORD         = random_password.pterodactyl_panel_db_password.result
   })
 }
 
@@ -141,6 +197,12 @@ locals {
       bao_wrapping_token = vault_approle_auth_backend_role_secret_id.nextcloud_id.wrapping_token
       bao_addr = var.bao_addr
       secret_path        = "secret/data/nextcloud/config"
+    },
+    pterodactyl_panel = {
+      bao_role_id = vault_approle_auth_backend_role.pterodactyl_panel.role_id
+      bao_wrapping_token = vault_approle_auth_backend_role_secret_id.pterodactyl_panel_id.wrapping_token
+      bao_addr = var.bao_addr
+      secret_path        = "secret/data/pterodactyl_panel/config"
     }
   }
 }

@@ -5,12 +5,12 @@ ssh_authorized_keys:
   - ssh-rsa ${ssh-key}
 ssh_pwauth: false
 
-users:
-  - name: debian
-    sudo: []
-    groups: [users]
-    ssh_authorized_keys:
-      - ssh-rsa ${ssh-key}
+#users:
+#  - name: debian
+#    sudo: []
+#    groups: [users]
+#    ssh_authorized_keys:
+#      - ssh-rsa ${ssh-key}
 
 package_update: true
 package_upgrade: true
